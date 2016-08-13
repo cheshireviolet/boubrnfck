@@ -8,88 +8,89 @@ namespace boubrnfck
 {
     class boubrnfck
     {
-        int[] _mem;
-        string _input, _output = "";
-        int _pointer = 0, _loopStart, _loopEnd, _charCounter = 0;
-        bool _ignoreLoop = false;
+        //This is probably not optimized sorry about the mess 
+        class Func
+        {
+            public int start, end;
+            public Func(int a, int b)
+            {
+                start = a;
+                end = b;
+            }
 
-        //boubrnfck stuff
-        string[] _func;
-        int _fPointer = 0;
-        bool _saveFunc = false;
-        string _tempfunc = "";
+        }
+
+
+        int[] _mem = new int[30000], _lInit = new int[14999];//Tape and an array that'll store '[' positions
+        int _p = 0, _l = 0, _f = 0, _c = 0; //tape, loop, function and input pointers.
+        string _i; // input
+        Func[] _fun = new Func[14000];
 
         public boubrnfck(string a)
         {
-            _mem = new int[30000];
-            _func = new string[15000];
-            _input = a;
+            _i = a;
+            Exec();
         }
 
-        void Action(char a)
+        private void Exec(int start = 0, int end = 0)
+        {
+
+            end = (end == 0) ? _i.Length : end;
+            for(int a = start; a < end;a++)
+            {
+                _c = a;
+                Action(_i[a]);
+                a = _c;
+            }
+        }
+
+        private void Action(char a)
         {
             switch (a)
             {
-                case '+': _mem[_pointer] = (_mem[_pointer] == 255) ? 0 : _mem[_pointer]+ 1; break;
-                case '-': _mem[_pointer] = (_mem[_pointer] == 0) ? 255 : _mem[_pointer]- 1; break;
-                case '.': _output+= (char)_mem[_pointer]; break;
-                case ',': _mem[_pointer] = Console.ReadKey().KeyChar; break;
-                case '>': _pointer++; break;
-                case '<': _pointer--; break;
-                case '[': if (_mem[_pointer] > 0) { _loopStart = _charCounter+1;} else { _ignoreLoop = true; }; break;
-                case ']': _loopEnd = _charCounter-1; Loop(); break;
-                //boubrnfck stuff
-                case '{': _saveFunc = true; break;
-                case '^': _fPointer--; break;
-                case 'v': _fPointer++; break;
-                case '@': ExecFunc(); break;
-                default: break;
+                case '+': _mem[_p] += (_mem[_p] == 255) ? -255 : 1; break;
+                case '-': _mem[_p] += (_mem[_p] == 0) ? 255 : -1; break;
+                case '.': Console.Write((char)_mem[_p]); break;
+                case ',': _mem[_p] = Console.ReadKey().KeyChar; break;
+                case '>': _p++; break;
+                case '<': _p--; break;
+                case '[':
+                    _lInit[_l] = (_mem[_p] > 0) ? _c : 0; _l++;
+                    if (_mem[_p] == 0)
+                    {
+                        int _k = 1;
+                        while (_k != 0)
+                        {
+                            _c++;
+                            switch (_i[_c]) { case '[': ++_k; break; case ']': --_k; break; }
+                        }
+                    }
+                    break;
+                case ']': --_l; if (_lInit[_l] != 0 && _mem[_p] > 0) _c = _lInit[_l] - 1; break;
+                case 'v': ++_f; break;
+                case '^': --_f; break;
+                case '{': SaveFunction(); break;
+                case '@': int _t = _c; Exec(_fun[_f].start, _fun[_f].end); _c = _t;  break;
             }
         }
 
-        public void Exec()
+        private void SaveFunction()
         {
-            foreach (char a in _input)
+            int _k = 0;
+            int _a = _c;
+            int _fStart = _a+1;
+            do
             {
-                if (!_ignoreLoop)
+                switch (_i[_a])
                 {
-                    if (!_saveFunc) Action(a);
-                    else if (a == '}') { _saveFunc = false; SaveFunc(); }
-                    else _tempfunc += a;
+                    case '{': ++_k; break;
+                    case '}': --_k; break;
+                    default: break;
                 }
-                else if (a == ']') _ignoreLoop = false;
-                ++_charCounter;
-            }
-            Console.WriteLine(_output);
+                _a++;
+            } while (_k > 0);
+            _fun[_f] = new Func(_fStart, _a-1);
+            _c = _a-1;
         }
-
-        void Loop()
-        {
-            bool stay = true;
-            int _tempS = _loopStart, _tempE = _loopEnd;
-            while (stay)
-            {
-                for (int a = _tempS; a <= _tempE; a++)
-                {
-                    Action(_input[a]);
-                }
-                stay = (_mem[_pointer] > 0) ? true : false;
-            }
-        }
-
-        void SaveFunc()
-        {
-            _func[_fPointer] = _tempfunc;
-            _tempfunc = "";
-        }
-
-        void ExecFunc()
-        {
-            foreach(char a in _func[_fPointer])
-            {
-                Action(a);
-            }
-        }
-
     }
 }
